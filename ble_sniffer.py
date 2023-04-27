@@ -2,7 +2,7 @@ import gatt
 import time
 
 NOTIFY_CHAR_UUID = "0000ffe1-0000-1000-8000-00805f9b34fb"
-# NOTIFY_CHAR_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"
+MAC_ADDRESS = "38:3b:26:79:df:37"
 
 class AnyDeviceManager(gatt.DeviceManager):
     def device_discovered(self, device):
@@ -75,9 +75,9 @@ class AnyDevice(gatt.Device):
 
     def parse_bytes(self, bs):
         data = {}
-        data['test'] = self.bytes_to_int(bs, 1, 64)
+        data['test'] = self.bytes_to_int(bs, 2, 4)
         # data['battery_percentage'] = self.bytes_to_int(bs, 3, 2)
-        data['battery_voltage'] = self.bytes_to_int(bs, 5, 2)
+        data['battery_voltage'] = self.bytes_to_int(bs, 2, 4)
         # data['battery_current'] = self.bytes_to_int(bs, 7, 2)
         return data
 
@@ -110,11 +110,11 @@ print("Found {} BLE-devices".format(len(manager.devices())))
 
 for dev in manager.devices():
     print("Processing device {} {}".format(dev.mac_address, dev.alias()))
-    mac = '38:3b:26:79:df:37'.lower()
+    mac = MAC_ADDRESS.lower()
     if dev.mac_address.lower() == mac:
         print("Trying to connect to {}...".format(dev.mac_address))
         try:
-            device = AnyDevice(mac_address='38:3b:26:79:df:37', manager=manager)
+            device = AnyDevice(mac_address=mac, manager=manager)
         except Exception as e:
             print(e)
             continue

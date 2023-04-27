@@ -1,6 +1,6 @@
-# Reverse Engineer Junctek BT Guide
+# BLE Sniffer Walkthrough for Junctek BT BAttery Monitor
 
-In order to get data off the Junctek via the BT I had to reverse engineer the data that was being sent over Bluetooth. This is more of a guide to remind myself how to do it if I have to go through it again.
+In order to get data off the Junctek via the BT I had to reverse engineer the data that was being sent over Bluetooth.
 
 # Examine and Log The Data
 
@@ -40,7 +40,6 @@ Updated Value of Characteristic FFE1 to 0xBB148816D5115233F371EE.
 Updated Value of Characteristic FFE1 to 0xBB148817D5115234F373EE.
 "0xBB148817D5115234F373EE" value received.
 ```
-6. Go back and repeat the process a couple times to get more data, but keeping things in separate files will make it easier to search for values.
 7. Look through the notes and start searching for values. ie: Ah readings of 38.895Ah, search for `38895`:
 ```
 [Callback] peripheral(peripheral, didUpdateValueForCharacteristic: FFE1, error: nil)
@@ -56,7 +55,7 @@ Updated Value of Characteristic FFE1 to 0xBB148623D5038895D2114920F352EE.
 10. Start looking at the different characterists for a field, ie: volts or aH. Look for similarities in the bytes.
 11. Set aside for now and proceed to next section.
 
-# Set up a test script to confirm results
+# Run ble_sniffer.py
 
 1. Scan for bluetooth devices.
 ```
@@ -64,111 +63,12 @@ sudo bluetoothctl
 scan on
 ```
 2. A bunch of devices should start displaying. Look for one with the name like `BTGXXX`. Copy the mac address for the next step.
-3. Create a new py test file with the following code, change the mac address to the device:
-```python
-import gatt
-import time
-
-NOTIFY_CHAR_UUID = ""
-
-class AnyDeviceManager(gatt.DeviceManager):
-    def device_discovered(self, device):
-        print("Discovered [%s] %s" % (device.mac_address, device.alias()))
-
-class AnyDevice(gatt.Device):
-    def connect_succeeded(self):
-        super().connect_succeeded()
-        print("[%s] Connected" % (self.mac_address))
-
-    def connect_failed(self, error):
-        super().connect_failed(error)
-        print("[%s] Connection failed: %s" % (self.mac_address, str(error)))
-
-    def disconnect_succeeded(self):
-        super().disconnect_succeeded()
-        print("[%s] Disconnected" % (self.mac_address))
-        print("[%s] Reconnecting in 10 seconds" % (self.mac_address))
-        time.sleep(10)
-        self.connect()
-
-    def services_resolved(self):
-        super().services_resolved()
-
-        print("[%s] Resolved services" % (self.mac_address))
-        for service in self.services:
-            print("[%s]  Service [%s]" % (self.mac_address, service.uuid))
-            for characteristic in service.characteristics:
-                if not NOTIFY_CHAR_UUID:
-                    print("[%s]    Characteristic [%s]" % (self.mac_address, characteristic.uuid))
-                elif characteristic.uuid == NOTIFY_CHAR_UUID:
-                    print("[%s]    Enabling Notifications for Characteristic [%s]" % (self.mac_address, characteristic.uuid))
-                    characteristic.enable_notifications()
-
-    def characteristic_enable_notifications_succeeded(self, characteristic):
-        print('characteristic_enable_notifications_succeeded')
-
-    def characteristic_enable_notifications_failed(self, characteristic, error):
-        print('characteristic_enable_notifications_failed')
-
-    def characteristic_value_updated(self, characteristic, value):
-        super().characteristic_value_updated(characteristic, value)
-        print(f"characteristic={characteristic.uuid} value={value}")
-
-manager = gatt.DeviceManager(adapter_name='hci0')
-
-# Run discovery
-manager.update_devices()
-print("Starting discovery...")
-# scan all the advertisements from the services list
-manager.start_discovery()
-discovering = True
-wait = 15
-found = []
-# delay / sleep for 10 ~ 15 sec to complete the scanning
-while discovering:
-    time.sleep(1)
-    f = len(manager.devices())
-    print("Found {} BLE-devices so far".format(f))
-    found.append(f)
-    if len(found) > 5:
-        if found[len(found) - 5] == f:
-            # We did not find any new devices the last 5 seconds
-            discovering = False
-    wait = wait - 1
-    if wait == 0:
-        discovering = False
-
-manager.stop_discovery()
-print("Found {} BLE-devices".format(len(manager.devices())))
-
-for dev in manager.devices():
-    print("Processing device {} {}".format(dev.mac_address, dev.alias()))
-    mac = '38:3b:26:79:df:37'.lower()
-    if dev.mac_address.lower() == mac:
-        print("Trying to connect to {}...".format(dev.mac_address))
-        try:
-            device = AnyDevice(mac_address='38:3b:26:79:df:37', manager=manager)
-        except Exception as e:
-            print(e)
-            continue
-
-        device.connect()
-
-print("Terminate with Ctrl+C")
-
-try:
-    manager.run()
-except KeyboardInterrupt:
-    pass
-
-for dev in manager.devices():
-    device.disconnect()
-```
+3. Open `ble_sniffer.py` in a text editor and make sure that `NOTIFY_CHAR_UUID = ""` and set `MAC_ADDRESS` to the value found in step 2.
 2. Run the script and connect to the device:
 ```
-python3 test.py
+python3 ble_sniffer.py
 ```
-3. There should be some results that look like this:
+5. There should be some results that look like this:
 ```
 [38:3b:26:79:df:37] Connected
 [38:3b:26:79:df:37] Resolved services
@@ -191,14 +91,22 @@ python3 test.py
 [38:3b:26:79:df:37]  Service [00001801-0000-1000-8000-00805f9b34fb]
 [38:3b:26:79:df:37]    Characteristic [00002a05-0000-1000-8000-00805f9b34fb]
 ```
-4. In the previous section it was discovered that all values were written to FFE1, as they all looked like this:
+6. In the previous section it was discovered that all values were written to FFE1, as they all looked something like this:
 ```
 Updated Value of Characteristic FFE1 to 0xBB148815D5115232F369EE.
 ```
-5. From that we can assume that the NOTIFY_SERVICE_UUID is `0000ffe1-0000-1000-8000-00805f9b34fb` based on the data returned in step 2:
+7. From that we can assume that the NOTIFY_SERVICE_UUID is `0000ffe1-0000-1000-8000-00805f9b34fb` based on the data returned in step 5:
 ```
 [38:3b:26:79:df:37]    Characteristic [0000ffe1-0000-1000-8000-00805f9b34fb]
 ```
-6. Set `NOTIFY_SERVICE_UUID` to the UUID in the python script. Run the script again.
+8. Set `NOTIFY_SERVICE_UUID` to the UUID in the python script. Run the script again and there should be results like this:
 ```
+Got packet of len: 18 bb275481d5025674d20249d4230337f389ee
+Got packet of len: 18 bb275482d5025675d20251d4230338f300ee
+Got packet of len: 18 bb275483d5025676d20252d4230339f304ee
+Got packet of len: 18 bb275484d5025677d20253d4230340f314ee
+Got packet of len: 18 bb275485d5025678d20254d4230341f318ee
+Got packet of len: 10 bb025679d20256d406ee
+Got packet of len: 11 bb275486d5230342f304ee
 ```
+9. Follow the same process as the last section and take notes of the values on the battery monitor, then CTRL+C to stop the script, and look for those values again.
