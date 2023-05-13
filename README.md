@@ -227,7 +227,7 @@ values["max_capacity"] = battery_capacity_ah
 print(values)
 ```
 
-## Data Applications - Logging and Visualization
+## Logging and Visualization
 
 For this particular project, I wanted to visualize and log the data using grafana and prometheus:
 [Check out my solar-bt-battery-monitor project here](https://github.com/chriskomus/solar-battery-bt-monitor).
@@ -235,6 +235,8 @@ For this particular project, I wanted to visualize and log the data using grafan
 I also wrote a plugin for [Olen's solar-monitor](https://github.com/Olen/solar-monitor).
 
 ## Appendix A -Examining the Bytes and Logging - via nRF Connect
+
+An alternative to using trial and error to find which Characterist UUID contains the useful information:
 
 1. Install nRF Connect on iOS or Android. Open it up and connect to the Junctek device. It should be something like `BTG004`.
 2. Under the Client tab scroll through the Attribute Table section and hit the down arrow button on everything to start pulling values from the device. Subscribe to values with the down arrow with the line under it. This will start pulling a continuous stream of information.
