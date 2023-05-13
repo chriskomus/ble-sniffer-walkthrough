@@ -286,3 +286,9 @@ Updated Value of Characteristic FFE1 to 0xBB148623D5038895D2114920F352EE.
 9. Repeat this process until all values in the notes have an associated Characteristic update. To find 'time left', convert hours to minutes.
 10. Start looking at the different characterists for a field, ie: volts or aH. Look for similarities in the bytes.
 11. Make a note of the `Updated Value of Characteristic xxxx to 0xBBxxxxxxx` block. In this case it always updates `FFE1`. This will be used in the next section.
+
+# Credits
+
+Uses [gatt-python](https://github.com/getsenic/gatt-python)
+
+Shout-outs to [Olen's solar-monitor project](https://github.com/Olen/solar-monitor) for some of the code in `ble_sniffer.py` that helps with discovery and reconnecting devices.

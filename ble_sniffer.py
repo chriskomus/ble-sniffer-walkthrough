@@ -53,7 +53,7 @@ class AnyDevice(gatt.Device):
         self.on_data_received(value)
 
     def on_data_received(self, value):
-        print(f"Got packet of len: {len(value)} {value.hex()}")
+        print(f"Got packet of len(value)={len(value)}: {value.hex()}")
 
 manager = gatt.DeviceManager(adapter_name='hci0')
 
