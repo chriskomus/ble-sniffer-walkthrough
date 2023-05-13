@@ -3,3 +3,4 @@
 .venv/
 __pycache__/
 raw_data/
+ble_config.ini
