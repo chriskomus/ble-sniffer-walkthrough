@@ -1,4 +1,4 @@
-# BLE Sniffer with Raspberry Pi and Reverse Engineering Walkthrough
+# BLE Sniffer with Raspberry Pi - Reverse Engineering Walkthrough
 
 This guide uses a Raspberry Pi CM4 and a Junctek Bluetooth Battery Monitor as reference. But any BLE device can be reverse engineered to some degree. If it sends a steady stream of data, unencrypted, in a mix of hex code and decimals it will be very similar to this guide. Otherwise, further tinkering will be required.
 
