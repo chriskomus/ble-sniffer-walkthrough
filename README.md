@@ -208,6 +208,10 @@ for key,value in list(values.items()):
         values[key] = val_int / 100
     elif key == "current":
         values[key] = val_int / 100
+    elif key == "discharge":
+        values[key] = val_int / 100000
+    elif key == "charge":
+        values[key] = val_int / 100000
     elif key == "dir_of_current":
         if value == "01":
             self.charging = True
