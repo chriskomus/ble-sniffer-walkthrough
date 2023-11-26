@@ -81,6 +81,7 @@ Got packet of len: 11 bb275486d5230342f304ee
 12. This indicates that the script is listening to the correct Characteristic UUID. Continue recording, changing values on the battery monitor device by adding loads, charging, discharging, etc. Record any changes in the notes so that there is a good list of values to search for.
 13. Let it run for a few more minutes, then press `ctrl+c`. Copy/paste the stream from the terminal to the text file.
 
+
 ## Making Sense Of It All
 
 1. Here's a sample set of bytes that were captured:
@@ -109,12 +110,22 @@ Got packet of len: 9 bb1205c06025d851ee
 
 4. From the info gathering in the previous section, comparing what the battery montior displays and then searching for the values in the byte stream, some patterns begin to emerge:
 - BB - every stream starts with
+- B1 - always comes after the battery capacity ah
 - EE - every stream ends with
 - C0 - always comes after voltage
 - C1 - always comes after amps
 - D2 - always comes after amp hours remaining
+- D3 - always comes after the total discharged today
+- D4 - always comes after the total charged today
 - D6 - always comes after time remaining
 - D8 - always comes after watts
+
+
+After analyse the data, we can realize that the device is converting UART messages to Bluetooth and if we check the [manual of junctek battery monitor](http://68.168.132.244/KH/Manual_en_zx.pdf) this all the data in the messages, the only thing  to do is determine which is the corresponding one for each data
+| Read  | sends command |  machine returns data |  Read Description |
+| ------------- | ------------- |------------- |------------- |
+| Read all measurement values  | :R50 =1,2, 1,  |:r50=1,123,1198,1090,7421,2749,437,298,113,0,0,1,69,100,230208, 112418,  | 1 represents the communicationaddress; 123 represents the checksum; 1198 represents the voltageat 11.98V; 1090 represents the current at 10.90A; 7421 represents the remainingbattery capacity at 7.421Ah; 2749 represents the dischargeelectricity consumption at 2.749KWh; 437 represents the chargingelectricity consumption at 0.437KWh; 298 represents the operational record value at 298; 113 represents the environmental temperature at 13℃; 0 represents a function tobedetermined; 0 represents the output statusasON; (0-ON, 1-OVP, 2-OCP, 3-LVP, 4-NCP, 5-OPP, 6-OTP, 99-OFF) 1 represents the current direction, currently charging current; (0-discharge, 1-charging) 69 represents the remaining timeat 69 minutes; 100 represents the time adjustment (to be determined); 230208 represents the dateas February 8th, 2023; 12418 represents the timeas 11:24:18.  |
+| Read all setting values  | :R51 =1,2, 1,  | :r51=1,69,2000,1000,2 000,3000,20000,120,5, 3,200,120,90,101,0,0,1,100,0,10000,1000,20, 20,80,0,4321,2,  | 1 represents communicationaddress; 69 represents checksum; 2000 represents overvoltageprotection set to 20.00V; 1000 represents undervoltageprotection set to 10.00V; 2000 represents over-dischargecurrent protection set to 20.00A; 3000 represents over-charge current protection set to 30.00A; 20000 represents over-power protection set to 200.00W; 120 represents over-temperatureprotection set to 20℃; 5 represents protection recoverytime set to 5s; 3 represents protection delay timeset to 3s; 200 represents preset batterycapacity set to 20.0Ah; 120 represents voltage calibrationfine-tuning with 20 tuning factors; (100 represents tuning factor 0) 90 represents current calibrationfine-tuning with -10 tuning factors; (100 represents tuning factor 0) 101 represents temperaturecalibration increase by 1℃; (100represents tuning factor 0) 0 represents undefined function; 0 represents normally openrelaytype; (0-normally open relay, 1-normally closed relay) 1 represents current multiplier set to1; (only applicable to Hall version) 100 represents time fine-tuningfunction (undefined); 0 represents data logging enabled; 10000 represents full charge voltageset to 100.00V; 1000 represents low battery voltageset to 10.00V; 20 represents full charge current value set to 20%; 20 represents monitoring timeset to2.0min; 80 represents low temperatureprotection set to -20℃; 0 represents current temperatureunit in Celsius; (1 representsFahrenheit) 4321 represents Bluetoothpassword set to 4321; 2 represents data logging withdatainterval of 3 seconds per record;  |
 
 I went through other hex values from A0 through FF, but couldn't find anything usable. There were a number of incremental values, but couldn't figure out if that was a clock, counter, or anything of use. In this case, getting volts, amps, watts, and ah remaining will be good enough. SoC (battery percentage) can be calculated by the aH remaining as a percentage of the aH of the battery. I couldn't find out whether it transmits charging state (charging vs discharging), and amps always display as a positive number regardless of the direction the amps are flowing.
 
@@ -133,7 +144,7 @@ I went through other hex values from A0 through FF, but couldn't find anything u
 
 `bb1873d22187d416ee`:
 - D2 - ah remaining - 1873 = 1.873 ah
-- D4 - ???
+- D4 - total charged today
 
 `bb1205c00853d6022800d76025d813ee`:
 - C0 - volt - 1205 = 12.05 volts
@@ -151,11 +162,13 @@ params = {
     "current": "C1",
     "dir_of_current": "D1",
     "ah_remaining": "D2",
+    "discharge": "D3",		
+    "charge": "D4",	
     "mins_remaining": "D6",
     "power": "D8",
     "temp": "D9"
 }
-battery_capacity_ah = 100
+battery_capacity_ah = 100 # use the B1 data??
 
 params_keys = list(params.keys())
 params_values = list(params.values())
@@ -195,6 +208,10 @@ for key,value in list(values.items()):
         values[key] = val_int / 100
     elif key == "current":
         values[key] = val_int / 100
+    elif key == "discharge":
+        values[key] = val_int / 100000
+    elif key == "charge":
+        values[key] = val_int / 100000
     elif key == "dir_of_current":
         if value == "01":
             self.charging = True
